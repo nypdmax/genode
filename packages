@@ -1,0 +1,4 @@
+# Author: Cheng Kun
+# On ubuntu 18.04 LTS with Gnome3
+# linux_x86 build requires:
+libasound2-dev pkg-config libsdl1.2-dev expect

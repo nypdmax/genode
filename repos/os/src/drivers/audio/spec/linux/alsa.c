@@ -13,7 +13,6 @@
  */
 
 #include <alsa/asoundlib.h>
-
 #include "alsa.h"
 
 static snd_pcm_t *playback_handle;
