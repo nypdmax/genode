@@ -1,0 +1,33 @@
+#
+# build
+#
+
+build { core init hello}
+
+create_boot_directory
+
+install_config{
+<config>
+	<parent-provides>
+		<service name="LOG" />
+	</parent-provides>
+	<default-route>
+		<any-service><parent/><any-child/></any-service>
+	</default-route>
+	<start name="server">
+	       <resource name="RAM" quantum="1M" />
+	       <provides><service name="Hello" /></provides>
+	</start>
+	<start name="client">
+	       <resource name="RAM" quantum="1M" />
+	</start>
+</config>
+}
+
+# boot image
+
+build_boot_image { core init client server}
+
+append qemu_args "-nographic"
+
+run_genode_until "hello tutorial completed .*\n" 10
