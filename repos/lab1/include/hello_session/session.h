@@ -1,3 +1,6 @@
+#ifndef _INCLUDE__HELLO_SESSION__HELLO_SESSION_H_
+#define _INCLUDE__HELLO_SESSION__HELLO_SESSION_H_
+
 #include <base/rpc.h>
 #include <session/session.h>
 
@@ -13,4 +16,6 @@ struct Hello::Session : Genode::Session
     GENODE_RPC(Rpc_say_hello, void, say_hello);
     GENODE_RPC(Rpc_add, int , add ,int ,int);
     GENODE_RPC_INTERFACE(Rpc_say_hello, Rpc_add);
-}
+};
+
+#endif

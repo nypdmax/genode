@@ -1,4 +1,4 @@
-#include <session/client.h>
+#include <hello_session/client.h>
 #include <base/connection.h>
 
 namespace Hello { struct Connection; }
