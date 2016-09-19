@@ -26,6 +26,7 @@
 *   Header Files                                                               *
 *******************************************************************************/
 #define LOG_GROUP LOG_GROUP_DRV_TUN
+#include <base/log.h>
 #include <VBox/log.h>
 #include <VBox/vmm/pdmdrv.h>
 #include <VBox/vmm/pdmnetifs.h>
@@ -456,7 +457,7 @@ static DECLCALLBACK(void) drvNicDestruct(PPDMDRVINS pDrvIns)
 	Nic_client *nic_client = pThis->nic_client;
 
 	if (!nic_client)
-		PERR("nic_client not valid at destruction time");
+		Genode::error("nic_client not valid at destruction time");
 
 	if (nic_client)
 		Genode::Signal_transmitter(nic_client->dispatcher()).submit();

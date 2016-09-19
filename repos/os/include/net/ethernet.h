@@ -16,13 +16,18 @@
 
 /* Genode includes */
 #include <base/exception.h>
-#include <base/output.h>
 #include <util/string.h>
 
 #include <util/endian.h>
-#include <net/netaddress.h>
+#include <net/mac_address.h>
 
-namespace Net { class Ethernet_frame; }
+namespace Net
+{
+	class Ethernet_frame;
+
+	template <Genode::size_t DATA_SIZE>
+	class Ethernet_frame_sized;
+}
 
 
 /**
@@ -44,21 +49,6 @@ class Net::Ethernet_frame
 			ADDR_LEN  = 6, /* MAC address length in bytes */
 		};
 
-		struct Mac_address : Network_address<ADDR_LEN>
-		{
-			using Network_address<ADDR_LEN>::Network_address;
-
-			void print(Genode::Output &output) const
-			{
-				using namespace Genode;
-
-				for (unsigned i = 0; i < ADDR_LEN; i++) {
-					Genode::print(output, Hex(addr[i], Hex::OMIT_PREFIX,
-					                          Hex::PAD));
-					if (i < ADDR_LEN-1) output.out_char(':');
-				}
-			}
-		};
 
 		static const Mac_address BROADCAST;  /* broadcast address */
 
@@ -73,6 +63,7 @@ class Net::Ethernet_frame
 
 		class No_ethernet_frame : Genode::Exception {};
 
+		enum { MIN_SIZE = 64 };
 
 		/**
 		 * Id representing encapsulated protocol.
@@ -191,6 +182,34 @@ class Net::Ethernet_frame
 		 */
 		void * operator new(Genode::size_t size, void* addr) {
 			return addr; }
+
+} __attribute__((packed));
+
+
+template <Genode::size_t DATA_SIZE>
+class Net::Ethernet_frame_sized : public Ethernet_frame
+{
+	private:
+
+		enum {
+			HS = sizeof(Ethernet_frame),
+			DS = DATA_SIZE + HS >= MIN_SIZE ? DATA_SIZE : MIN_SIZE - HS,
+		};
+
+		Genode::uint8_t  _data[DS];
+		Genode::uint32_t _checksum;
+
+	public:
+
+		Ethernet_frame_sized(Mac_address dst_in, Mac_address src_in,
+		                     Ether_type type_in)
+		:
+			Ethernet_frame(sizeof(Ethernet_frame))
+		{
+			dst(dst_in);
+			src(src_in);
+			type(type_in);
+		}
 
 } __attribute__((packed));
 

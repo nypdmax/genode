@@ -17,14 +17,15 @@
 /* Genode */
 #include <base/stdint.h>
 #include <util/string.h>
+#include <base/output.h>
 
-namespace Net { template <unsigned> class Network_address; }
+namespace Net { template <unsigned, char, bool> class Network_address; }
 
 
 /**
  * Generic form of a network address.
  */
-template <unsigned LEN>
+template <unsigned LEN, char DELIM, bool HEX>
 struct Net::Network_address
 {
 	Genode::uint8_t addr[LEN];
@@ -47,6 +48,16 @@ struct Net::Network_address
 
 	void copy(void *dst) { Genode::memcpy(dst, addr, LEN); }
 
+	void print(Genode::Output &output) const
+	{
+		using namespace Genode;
+		for (unsigned i = 0; i < LEN; i++) {
+			if (!HEX) { Genode::print(output, (unsigned) addr[i]); }
+			else { Genode::print(output, Hex(addr[i], Hex::OMIT_PREFIX, Hex::PAD)); }
+			if (i < LEN - 1) output.out_char(DELIM);
+		}
+	}
+
 
 	/***************
 	 ** Operators **
@@ -66,6 +77,9 @@ struct Net::Network_address
 		}
 		return true;
 	}
+
+	bool operator!=(const Network_address &other) const {
+		return !(*this == other); }
 };
 
 #endif /* _NET__NETADDRESS_H_ */

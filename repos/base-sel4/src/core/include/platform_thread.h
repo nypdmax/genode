@@ -59,6 +59,7 @@ class Genode::Platform_thread : public List<Platform_thread>::Element
 		 */
 		Cap_sel _fault_handler_sel { 0 };
 		Cap_sel _ep_sel            { 0 };
+		Cap_sel _lock_sel          { 0 };
 
 		friend class Platform_pd;
 
@@ -170,7 +171,7 @@ class Genode::Platform_thread : public List<Platform_thread>::Element
 		/**
 		 * Get thread name
 		 */
-		const char *name() const { return "noname"; }
+		const char *name() const { return _name.string(); }
 
 
 		/*****************************

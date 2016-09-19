@@ -14,7 +14,7 @@
 
 /* Genode includes */
 #include <base/env.h>
-#include <base/printf.h>
+#include <base/log.h>
 #include <base/slab.h>
 #include <util/construct_at.h>
 #include <util/string.h>
@@ -102,7 +102,7 @@ class Malloc : public Genode::Allocator
 			}
 		}
 
-		~Malloc() { PDBG("CALLED"); }
+		~Malloc() { Genode::warning(__func__, " unexpectedly called"); }
 
 		/**
 		 * Allocator interface
@@ -192,7 +192,8 @@ extern "C" void *malloc(size_t size)
 extern "C" void *calloc(size_t nmemb, size_t size)
 {
 	void *addr = malloc(nmemb*size);
-	Genode::memset(addr, 0, nmemb*size);
+	if (addr)
+		Genode::memset(addr, 0, nmemb*size);
 	return addr;
 }
 

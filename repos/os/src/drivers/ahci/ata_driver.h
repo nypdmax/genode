@@ -14,6 +14,7 @@
 #ifndef _ATA_DRIVER_H_
 #define _ATA_DRIVER_H_
 
+#include <base/log.h>
 #include "ahci.h"
 
 using namespace Genode;
@@ -57,20 +58,21 @@ struct Identity : Genode::Mmio
 
 	void info()
 	{
-		PLOG("\t\tqueue depth: %u ncq: %u",
-		     read<Queue_depth::Max_depth>() + 1,
-		     read<Sata_caps::Ncq_support>());
-		PLOG("\t\tnumer of sectors: %llu", read<Sector_count>());
-		PLOG("\t\tmultiple logical blocks per physical: %s",
-		     read<Logical_block::Multiple>() ? "yes" : "no");
-		PLOG("\t\tlogical blocks per physical: %u",
-		     1U << read<Logical_block::Per_physical>());
-		PLOG("\t\tlogical block size is above 512 byte: %s",
-		     read<Logical_block::Longer_512>() ? "yes" : "no");
-		PLOG("\t\twords (16bit) per logical block: %u",
-		     read<Logical_words>());
-		PLOG("\t\toffset of first logical block within physical: %u",
-		     read<Alignment::Logical_offset>());
+		using Genode::log;
+
+		log("  queue depth: ", read<Queue_depth::Max_depth>() + 1, " "
+		    "ncq: ", read<Sata_caps::Ncq_support>());
+		log("  numer of sectors: ", read<Sector_count>());
+		log("  multiple logical blocks per physical: ",
+		    read<Logical_block::Multiple>() ? "yes" : "no");
+		log("  logical blocks per physical: ",
+		    1U << read<Logical_block::Per_physical>());
+		log("  logical block size is above 512 byte: ",
+		    read<Logical_block::Longer_512>() ? "yes" : "no");
+		log("  words (16bit) per logical block: ",
+		    read<Logical_words>());
+		log("  offset of first logical block within physical: ",
+		    read<Alignment::Logical_offset>());
 	}
 };
 
@@ -105,6 +107,8 @@ struct String
 	{
 		return strcmp(buf, other) == 0;
 	}
+
+	void print(Genode::Output &out) const { Genode::print(out, (char const *)buf); }
 };
 
 
@@ -185,8 +189,8 @@ struct Ata_driver : Port_driver
 	Block::Packet_descriptor                  pending[32];
 
 	Ata_driver(Genode::Allocator &alloc,
-	           Port &port, Signal_context_capability state_change)
-	: Port_driver(port, state_change), alloc(alloc)
+	           Port &port, Ahci_root &root, unsigned &sem)
+	: Port_driver(port, root, sem), alloc(alloc)
 	{
 		Port::init();
 		identify_device();
@@ -237,8 +241,11 @@ struct Ata_driver : Port_driver
 			    (end          >= pending_start && end          <= pending_end) ||
 			    (pending_start >= block_number && pending_start <= end) ||
 			    (pending_end   >= block_number && pending_end   <= end)) {
-				PWRN("Overlap: pending %llu + %zu, request: %llu + %zu", pending[slot].block_number(),
-				     pending[slot].block_count(), block_number, count);
+
+				Genode::warning("overlap: "
+				                "pending ", pending[slot].block_number(),
+				                " + ", pending[slot].block_count(), ", "
+				                "request: ", block_number, " + ", count);
 				throw Block::Driver::Request_congestion();
 			}
 		}
@@ -279,9 +286,6 @@ struct Ata_driver : Port_driver
 	{
 		Is::access_t status = Port::read<Is>();
 
-		if (verbose)
-			PDBG("irq: %x state: %u", status, state);
-
 		switch (state) {
 
 		case IDENTIFY:
@@ -294,8 +298,8 @@ struct Ata_driver : Port_driver
 				model.construct(*info);
 
 				if (verbose) {
-					PLOG("\t\tmodel number: %s", model->buf);
-					PLOG("\t\tserial number: %s", serial->buf);
+					Genode::log("  model number: ",  Genode::Cstring(model->buf));
+					Genode::log("  serial number: ", Genode::Cstring(serial->buf));
 					info->info();
 				}
 

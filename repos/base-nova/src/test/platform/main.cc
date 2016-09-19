@@ -12,8 +12,9 @@
  * under the terms of the GNU General Public License version 2.
  */
 
+#include <base/heap.h>
 #include <base/thread.h>
-#include <base/printf.h>
+#include <base/log.h>
 #include <base/snprintf.h>
 
 #include <util/touch.h>
@@ -32,14 +33,12 @@ static unsigned failed = 0;
 
 static unsigned check_pat = 1;
 
-static Genode::Cap_connection cap;
-
 using namespace Genode;
 
-void test_translate()
+void test_translate(Genode::Env &env)
 {
 	enum { STACK_SIZE = 4096 };
-	static Rpc_entrypoint ep(&cap, STACK_SIZE, "rpc_ep_translate");
+	static Rpc_entrypoint ep(&env.pd(), STACK_SIZE, "rpc_ep_translate");
 
 	Test::Component  component;
 	Test::Capability session_cap = ep.manage(&component);
@@ -53,7 +52,7 @@ void test_translate()
 	    local_name == (addr_t)Native_thread::INVALID_INDEX)
 	{
 		failed ++;
-		PERR("%s: ipc call failed %lx", __func__, rpc);
+		error(__func__, ": ipc call failed ", Hex(rpc));
 		ep.dissolve(&component);
 		return;
 	}
@@ -66,21 +65,21 @@ void test_translate()
 	    local_name == (addr_t)Native_thread::INVALID_INDEX)
 	{
 		failed ++;
-		PERR("%s: ipc call failed %lx", __func__, rpc);
+		error(__func__, ": ipc call failed ", Hex(rpc));
 		ep.dissolve(&component);
 		return;
 	}
 
 	Genode::Native_capability copy2 = Capability_space::import(local_name);
 
-	PINF("delegation session_cap->copy1->copy2 0x%lx->0x%lx->0x%lx",
-	     session_cap.local_name(), copy1.local_name(), copy2.local_name());
+	log("delegation session_cap->copy1->copy2 ",
+	    session_cap, "->", copy1, "->", copy2);
 
 	/* sanity checks translate which must work */
 	Genode::Native_capability got_cap = client.cap_cap(copy2.local_name());
 	if (got_cap.local_name() != copy1.local_name()) {
 		failed ++;
-		PERR("%u:%s translate failed", __LINE__, __func__);
+		error(__LINE__, ":", __func__, " translate failed");
 		ep.dissolve(&component);
 		return;
 	}
@@ -88,7 +87,7 @@ void test_translate()
 	got_cap = client.cap_cap(copy1.local_name());
 	if (got_cap.local_name() != session_cap.local_name()) {
 		failed ++;
-		PERR("%u:%s translate failed", __LINE__, __func__);
+		error(__LINE__, ":", __func__, " translate failed");
 		ep.dissolve(&component);
 		return;
 	}
@@ -96,7 +95,7 @@ void test_translate()
 	got_cap = client.cap_cap(session_cap.local_name());
 	if (got_cap.local_name() != session_cap.local_name()) {
 		failed ++;
-		PERR("%u:%s translate failed", __LINE__, __func__);
+		error(__LINE__, ":", __func__, " translate failed");
 		ep.dissolve(&component);
 		return;
 	}
@@ -114,7 +113,7 @@ void test_translate()
 	Genode::uint8_t res = Nova::lookup(crd_ses);
 	if (res != Nova::NOVA_OK || !crd_ses.is_null()) {
 		failed ++;
-		PERR("%u - lookup call failed err=%x", __LINE__, res);
+		error(__LINE__, " - lookup call failed err=", Hex(res));
 		ep.dissolve(&component);
 		return;
 	}
@@ -123,7 +122,7 @@ void test_translate()
 	got_cap = client.cap_cap(copy2.local_name());
 	if (got_cap.local_name() != session_cap.local_name()) {
 		failed ++;
-		PERR("%u:%s translate failed", __LINE__, __func__);
+		error(__LINE__, ":", __func__, " translate failed");
 		ep.dissolve(&component);
 		return;
 	}
@@ -131,10 +130,10 @@ void test_translate()
 	ep.dissolve(&component);
 }
 
-void test_revoke()
+void test_revoke(Genode::Env &env)
 {
 	enum { STACK_SIZE = 4096 };
-	static Rpc_entrypoint ep(&cap, STACK_SIZE, "rpc_ep_revoke");
+	static Rpc_entrypoint ep(&env.pd(), STACK_SIZE, "rpc_ep_revoke");
 
 	Test::Component  component;
 	Test::Capability session_cap = ep.manage(&component);
@@ -148,7 +147,7 @@ void test_revoke()
 	    local_name == (addr_t)Native_thread::INVALID_INDEX)
 	{
 		failed ++;
-		PERR("test_revoke ipc call failed %lx", rpc);
+		error("test_revoke ipc call failed ", Hex(rpc));
 		ep.dissolve(&component);
 		return;
 	}
@@ -161,7 +160,7 @@ void test_revoke()
 	    local_name == (addr_t)Native_thread::INVALID_INDEX)
 	{
 		failed ++;
-		PERR("test_revoke ipc call failed %lx", rpc);
+		error("test_revoke ipc call failed ", Hex(rpc));
 		ep.dissolve(&component);
 		return;
 	}
@@ -171,7 +170,7 @@ void test_revoke()
 	if (res != Nova::NOVA_OK || crd_dst.base() != local_name || crd_dst.type() != 3 ||
 	    crd_dst.order() != 0) {
 		failed ++;
-		PERR("%u - lookup call failed %x", __LINE__, res);
+		error(__LINE__, " - lookup call failed ", Hex(res));
 		ep.dissolve(&component);
 		return;
 	}
@@ -181,7 +180,7 @@ void test_revoke()
 	if (res != Nova::NOVA_OK || crd_ses.base() != (addr_t)copy_session_cap.local_name()
 	 || crd_ses.type() != 3 || crd_ses.order() != 0) {
 		failed ++;
-		PERR("%u - lookup call failed err=%x is_null=%u", __LINE__, res, crd_ses.is_null());
+		error(__LINE__, " - lookup call failed err=", Hex(res), " is_null=", crd_ses.is_null());
 		ep.dissolve(&component);
 		return;
 	}
@@ -190,7 +189,7 @@ void test_revoke()
 	if (res != Nova::NOVA_OK || crd_dst.base() != local_name || crd_dst.type() != 3 ||
 	    crd_dst.order() != 0) {
 		failed ++;
-		PERR("%u - lookup call failed err=%x is_null=%u", __LINE__, res, crd_dst.is_null());
+		error(__LINE__, " - lookup call failed err=", Hex(res), " is_null=", crd_dst.is_null());
 		ep.dissolve(&component);
 		return;
 	}
@@ -203,7 +202,7 @@ void test_revoke()
 	res = Nova::lookup(crd_ses);
 	if (res != Nova::NOVA_OK || !crd_ses.is_null()) {
 		failed ++;
-		PERR("%u - lookup call failed err=%x", __LINE__, res);
+		error(__LINE__, " - lookup call failed err=", Hex(res));
 		ep.dissolve(&component);
 		return;
 	}
@@ -212,7 +211,7 @@ void test_revoke()
 	if (res != Nova::NOVA_OK || crd_dst.base() != local_name || crd_dst.type() != 3 ||
 	    crd_dst.order() != 0) {
 		failed ++;
-		PERR("%u - lookup call failed err=%x is_null=%u", __LINE__, res, crd_dst.is_null());
+		error(__LINE__, " - lookup call failed err=", Hex(res), " is_null=", crd_dst.is_null());
 		ep.dissolve(&component);
 		return;
 	}
@@ -231,7 +230,7 @@ void test_revoke()
 	if (res != Nova::NOVA_OK || crd_ses.base() != (addr_t)copy_session_cap.local_name() ||
 	    crd_ses.type() != 3 || crd_ses.order() != 0) {
 		failed ++;
-		PERR("%u - lookup call failed err=%x is_null=%u", __LINE__, res, crd_ses.is_null());
+		error(__LINE__, " - lookup call failed err=", Hex(res), " is_null=", crd_ses.is_null());
 		ep.dissolve(&component);
 		return;
 	}
@@ -244,7 +243,7 @@ void test_revoke()
 	if (res != Nova::NOVA_OK || crd_dst.base() != local_name || crd_dst.type() != 3 ||
 	    crd_dst.order() != 0) {
 		failed ++;
-		PERR("%u - lookup call failed err=%x is_null=%u", __LINE__, res, crd_dst.is_null());
+		error(__LINE__, " - lookup call failed err=", Hex(res), " is_null=", crd_dst.is_null());
 		ep.dissolve(&component);
 		return;
 	}
@@ -257,12 +256,12 @@ void test_revoke()
 	res = Nova::lookup(crd_dst);
 	if (res != Nova::NOVA_OK || !crd_dst.is_null()) {
 		failed ++;
-		PERR("%u - lookup call failed err=%x is_null=%u", __LINE__, res, crd_dst.is_null());
+		error(__LINE__, " - lookup call failed err=", Hex(res), " is_null=", crd_dst.is_null());
 		return;
 	}
 }
 
-void test_pat()
+void test_pat(Genode::Env &env)
 {
 	/* read out the tsc frequenzy once */
 	Genode::Attached_rom_dataspace _ds("hypervisor_info_page");
@@ -270,20 +269,21 @@ void test_pat()
 
 	enum { DS_ORDER = 12, PAGE_4K = 12 };
 
-	Ram_dataspace_capability ds = env()->ram_session()->alloc (1 << (DS_ORDER + PAGE_4K), WRITE_COMBINED);
-	addr_t map_addr = env()->rm_session()->attach(ds);
+	Ram_dataspace_capability ds = env.ram().alloc (1 << (DS_ORDER + PAGE_4K),
+	                                               WRITE_COMBINED);
+	addr_t map_addr = env.rm().attach(ds);
 
 	enum { STACK_SIZE = 4096 };
 
-	static Rpc_entrypoint ep(&cap, STACK_SIZE, "rpc_ep_pat");
+	static Rpc_entrypoint ep(&env.pd(), STACK_SIZE, "rpc_ep_pat");
 
 	Test::Component  component;
 	Test::Capability session_cap = ep.manage(&component);
 	Test::Client     client(session_cap);
 
-	Genode::Rm_connection rm;
+	Genode::Rm_connection rm(env);
 	Genode::Region_map_client rm_free_area(rm.create(1 << (DS_ORDER + PAGE_4K)));
-	addr_t remap_addr = Genode::env()->rm_session()->attach(rm_free_area.dataspace());
+	addr_t remap_addr = env.rm().attach(rm_free_area.dataspace());
 
 	/* trigger mapping of whole area */
 	for (addr_t i = map_addr; i < map_addr + (1 << (DS_ORDER + PAGE_4K)); i += (1 << PAGE_4K))
@@ -346,9 +346,9 @@ void test_pat()
 	if (check_pat && diff_run * 100 / hip->tsc_freq) {
 		failed ++;
 
-		PERR("map=%llx remap=%llx --> diff=%llx freq_tsc=%u %llu us",
-		     map_run, remap_run, diff_run, hip->tsc_freq,
-		     diff_run * 1000 / hip->tsc_freq);
+		error("map=", Hex(map_run), " remap=", Hex(remap_run), " --> "
+		      "diff=", Hex(diff_run), " freq_tsc=", hip->tsc_freq, " ",
+		     diff_run * 1000 / hip->tsc_freq, " us");
 	}
 
 	Nova::revoke(Nova::Mem_crd(remap_addr >> PAGE_4K, DS_ORDER, all));
@@ -359,13 +359,13 @@ void test_pat()
 	 */
 }
 
-void test_server_oom()
+void test_server_oom(Genode::Env &env)
 {
 	using namespace Genode;
 
 	enum { STACK_SIZE = 4096 };
 
-	static Rpc_entrypoint ep(&cap, STACK_SIZE, "rpc_ep_oom");
+	static Rpc_entrypoint ep(&env.pd(), STACK_SIZE, "rpc_ep_oom");
 
 	Test::Component  component;
 	Test::Capability session_cap = ep.manage(&component);
@@ -376,7 +376,7 @@ void test_server_oom()
 		Genode::Native_capability got_cap = client.void_cap();
 
 		if (!got_cap.valid()) {
-			PERR("%u cap id %lx invalid", i, got_cap.local_name());
+			error(i, " cap id ", Hex(got_cap.local_name()), " invalid");
 			failed ++;
 			break;
 		}
@@ -386,7 +386,7 @@ void test_server_oom()
 		idx.inc();
 
 		if (i % 5000 == 4999)
-			PINF("received %u. cap", i);
+			log("received ", i, ". cap");
 	}
 
 	/* XXX this code does does no longer work since the removal of 'solely_map' */
@@ -399,45 +399,50 @@ void test_server_oom()
 		send_cap.solely_map();
 
 		if (!client.cap_void(send_cap)) {
-			PERR("sending %4u. cap failed", i);
+			error("sending ", i, ". cap failed");
 			failed ++;
 			break;
 		}
 
 		if (i % 5000 == 4999)
-			PINF("sent %u. cap", i);
+			log("sent ", i, ". cap");
 	}
 #endif
 
 	ep.dissolve(&component);
 }
 
-class Greedy : public Thread_deprecated<4096> {
+class Greedy : public Genode::Thread {
+
+	private:
+
+		Genode::Env &_env;
 
 	public:
 
-		Greedy()
+		Greedy(Genode::Env &env)
 		:
-			Thread_deprecated<0x1000>("greedy")
+			Thread(env, "greedy", 0x1000),
+			_env(env)
 		{ }
 
 		void entry()
 		{
-			PINF("starting");
+			log("starting");
 
 			enum { SUB_RM_SIZE = 2UL * 1024 * 1024 * 1024 };
 
-			Genode::Rm_connection rm;
+			Genode::Rm_connection rm(_env);
 			Genode::Region_map_client sub_rm(rm.create(SUB_RM_SIZE));
-			addr_t const mem = env()->rm_session()->attach(sub_rm.dataspace());
+			addr_t const mem = _env.rm().attach(sub_rm.dataspace());
 
 			Nova::Utcb * nova_utcb = reinterpret_cast<Nova::Utcb *>(utcb());
 			Nova::Rights const mapping_rwx(true, true, true);
 
 			addr_t const page_fault_portal = native_thread().exc_pt_sel + 14;
 
-			PERR("cause mappings in range [0x%lx, 0x%lx) %p", mem,
-			     mem + SUB_RM_SIZE - 1, &mem);
+			log("cause mappings in range ",
+			    Hex_range<addr_t>(mem, SUB_RM_SIZE), " ", &mem);
 
 			for (addr_t map_to = mem; map_to < mem + SUB_RM_SIZE; map_to += 4096) {
 
@@ -450,7 +455,7 @@ class Greedy : public Thread_deprecated<4096> {
 				/* trigger faked page fault */
 				Genode::uint8_t res = Nova::call(page_fault_portal);
 				if (res != Nova::NOVA_OK) {
-					PINF("call result=%u", res);
+					log("call result=", res);
 					failed++;
 					return;
 				}
@@ -460,13 +465,13 @@ class Greedy : public Thread_deprecated<4096> {
 
 				/* print status information in interval of 32M */
 				if (!(map_to & (32UL * 1024 * 1024 - 1))) {
-					printf("0x%lx\n", map_to);
+					log(Hex(map_to));
 					/* trigger some work to see quota in kernel decreasing */
 //					Nova::Rights rwx(true, true, true);
 //					Nova::revoke(Nova::Mem_crd((map_to - 32 * 1024 * 1024) >> 12, 12, rwx));
 				}
 			}
-			printf("still alive - done\n");
+			log("still alive - done");
 		}
 };
 
@@ -483,48 +488,33 @@ void check(uint8_t res, const char *format, ...)
 	va_end(list);
 
 	if (res == Nova::NOVA_OK) {
-		PERR("res=%u %s - TEST FAILED", res, buf);
+		error("res=", res, " ", Cstring(buf), " - TEST FAILED");
 		failed++;
 	}
 	else
-		printf("res=%u %s\n", res, buf);
+		log("res=", res, " ", Cstring(buf));
 }
 
-int main(int argc, char **argv)
+struct Main
 {
-	printf("testing base-nova platform\n");
+	Genode::Env  &env;
+	Genode::Heap  heap { env.ram(), env.rm() };
+
+	Main(Env &env);
+};
+
+Main::Main(Env &env) : env(env)
+{
+	log("testing base-nova platform");
 
 	try {
 		Genode::config()->xml_node().attribute("check_pat").value(&check_pat);
 	} catch (...) { }
 
 	Thread * myself = Thread::myself();
-	if (!myself)
-		return -__LINE__;
-
-	addr_t sel_pd  = cap_map()->insert();
-	addr_t sel_ec  = myself->native_thread().ec_sel;
-	addr_t sel_cap = cap_map()->insert();
-	addr_t handler = 0UL;
-	uint8_t    res = 0;
-
-	Nova::Mtd mtd(Nova::Mtd::ALL);
-
-	if (sel_cap == ~0UL || sel_ec == ~0UL || sel_cap == ~0UL)
-		return -__LINE__;
-
-	/* negative syscall tests - they should not succeed */
-	res = Nova::create_pt(sel_cap, sel_pd, sel_ec, mtd, handler);
-	check(res, "create_pt");
-
-	res = Nova::create_sm(sel_cap, sel_pd, 0);
-	check(res, "create_sm");
-
-	/* changing the badge of one of the portal must fail */
-	for (unsigned i = 0; i < (1U << Nova::NUM_INITIAL_PT_LOG2); i++) {
-		addr_t sel_exc = myself->native_thread().exc_pt_sel + i;
-		res = Nova::pt_ctrl(sel_exc, 0xbadbad);
-		check(res, "pt_ctrl %2u", i);
+	if (!myself) {
+		env.parent().exit(-__LINE__);
+		return;
 	}
 
 	/* upgrade available capability indices for this process */
@@ -540,14 +530,41 @@ int main(int argc, char **argv)
 		index = range->base() + range->elements();
 	};
 
+	addr_t sel_pd  = cap_map()->insert();
+	addr_t sel_ec  = myself->native_thread().ec_sel;
+	addr_t sel_cap = cap_map()->insert();
+	addr_t handler = 0UL;
+	uint8_t    res = 0;
+
+	Nova::Mtd mtd(Nova::Mtd::ALL);
+
+	if (sel_cap == ~0UL || sel_ec == ~0UL || sel_cap == ~0UL) {
+		env.parent().exit(-__LINE__);
+		return;
+	}
+
+	/* negative syscall tests - they should not succeed */
+	res = Nova::create_pt(sel_cap, sel_pd, sel_ec, mtd, handler);
+	check(res, "create_pt");
+
+	res = Nova::create_sm(sel_cap, sel_pd, 0);
+	check(res, "create_sm");
+
+	/* changing the badge of one of the portal must fail */
+	for (unsigned i = 0; i < (1U << Nova::NUM_INITIAL_PT_LOG2); i++) {
+		addr_t sel_exc = myself->native_thread().exc_pt_sel + i;
+		res = Nova::pt_ctrl(sel_exc, 0xbadbad);
+		check(res, "pt_ctrl %2u", i);
+	}
+
 	/* test PAT kernel feature */
-	test_pat();
+	test_pat(env);
 
 	/* test special revoke */
-	test_revoke();
+	test_revoke(env);
 
 	/* test translate together with special revoke */
-	test_translate();
+	test_translate(env);
 
 	/**
 	 * Test to provoke out of memory during capability transfer of
@@ -556,15 +573,25 @@ int main(int argc, char **argv)
 	 * Set in hypervisor.ld the memory to a low value of about 1M to let
 	 * trigger the test.
 	 */
-	test_server_oom();
+	test_server_oom(env);
 
 	/* Test to provoke out of memory in kernel during interaction with core */
-	static Greedy core_pagefault_oom;
+	static Greedy core_pagefault_oom(env);
 	core_pagefault_oom.start();
 	core_pagefault_oom.join();
 
 	if (!failed)
-		printf("Test finished\n");
+		log("Test finished");
 
-	return -failed;
+	env.parent().exit(-__LINE__);
+}
+
+
+/***************
+ ** Component **
+ ***************/
+
+namespace Component {
+	Genode::size_t stack_size()      { return 2*1024*sizeof(long);  }
+	void construct(Genode::Env &env) { static Main main(env); }
 }

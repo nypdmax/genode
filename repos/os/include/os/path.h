@@ -16,6 +16,7 @@
 
 /* Genode includes */
 #include <util/string.h>
+#include <base/output.h>
 
 namespace Genode {
 
@@ -326,12 +327,22 @@ class Genode::Path_base
 		{
 			return strcmp(_path, other) != 0;
 		}
+
+		char const *last_element()
+		{
+			return last_element(_path)+1;
+		}
+
+		/**
+		 * Print path to output stream
+		 */
+		void print(Genode::Output &output) const { output.out_string(base()); }
 };
 
 
 template <unsigned MAX_LEN>
-class Genode::Path : public Path_base {
-
+class Genode::Path : public Path_base
+{
 	private:
 
 		char _buf[MAX_LEN];
@@ -351,7 +362,7 @@ class Genode::Path : public Path_base {
 		Path(char const *path, char const *pwd = 0)
 		: Path_base(_buf, sizeof(_buf), path, pwd) { }
 
-		constexpr size_t capacity() { return MAX_LEN; }
+		static constexpr size_t capacity() { return MAX_LEN; }
 
 		Path& operator=(char const *path)
 		{
@@ -360,13 +371,58 @@ class Genode::Path : public Path_base {
 			return *this;
 		}
 
-		template <unsigned N>
-		Path& operator=(Path<N> &other)
+		Path(Path const &other) : Path_base(_buf, sizeof(_buf), other._buf) { }
+
+		Path& operator=(Path const &other)
 		{
 			Genode::strncpy(_buf, other._buf, MAX_LEN);
 			return *this;
 		}
 
+		template <unsigned N>
+		Path& operator=(Path<N> const &other)
+		{
+			Genode::strncpy(_buf, other._buf, MAX_LEN);
+			return *this;
+		}
 };
+
+namespace Genode {
+
+	template <typename PATH>
+	static inline PATH path_from_label(char const *label)
+	{
+		PATH path;
+
+		char tmp[path.capacity()];
+		size_t len = strlen(label);
+
+		size_t i = 0;
+		for (size_t j = 1; j < len; ++j) {
+			if (!strcmp(" -> ", label+j, 4)) {
+				path.append("/");
+
+				strncpy(tmp, label+i, (j-i)+1);
+				/* rewrite any directory seperators */
+				for (size_t k = 0; k < path.capacity(); ++k)
+					if (tmp[k] == '/')
+						tmp[k] = '_';
+				path.append(tmp);
+
+				j += 4;
+				i = j;
+			}
+		}
+		path.append("/");
+		strncpy(tmp, label+i, path.capacity());
+		/* rewrite any directory seperators */
+		for (size_t k = 0; k < path.capacity(); ++k)
+			if (tmp[k] == '/')
+				tmp[k] = '_';
+		path.append(tmp);
+
+		return path;
+	}
+}
 
 #endif /* _INCLUDE__OS__PATH_H_ */

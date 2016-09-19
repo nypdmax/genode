@@ -141,14 +141,20 @@ append config_of_app {
 
 	<start name="nit_fb" priority="-1">
 		<resource name="RAM" quantum="8M" />
+		<config/>
 		<provides>
 			<service name="Framebuffer" />
 			<service name="Input" />
 		</provides>
 	</start>
 
-	<start name="vbox" priority="-2">
-		<binary name="virtualbox" />
+	<start name="vbox" priority="-2">}
+append_if [expr $use_vbox4] config_of_app {
+		<binary name="virtualbox" />}
+append_if [expr $use_vbox5] config_of_app {
+		<binary name="virtualbox5" />}
+
+append config_of_app {
 		<resource name="RAM" quantum="1280M"/>}
 append config_of_app "
 			<config ld_verbose=\"yes\" vbox_file=\"${vbox_file}\" vm_name=\"${flavor}\" xhci=\"yes\">"
