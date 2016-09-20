@@ -6,7 +6,7 @@ build { core init hello}
 
 create_boot_directory
 
-install_config{
+install_config {
 <config>
 	<parent-provides>
 		<service name="LOG" />
@@ -30,4 +30,4 @@ build_boot_image { core init client server}
 
 append qemu_args "-nographic"
 
-run_genode_until "hello tutorial completed .*\n" 10
+run_genode_until "hello tutorial completed.*\n" 10

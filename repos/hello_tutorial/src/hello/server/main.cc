@@ -25,6 +25,7 @@ namespace Hello {
 }
 
 
+
 struct Hello::Session_component : Genode::Rpc_object<Session>
 {
 	void say_hello() {

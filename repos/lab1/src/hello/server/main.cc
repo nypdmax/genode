@@ -1,6 +1,6 @@
 #include <base/log.h>
 #include <base/component.h>
-#include <hello_session/session.h>
+#include <hello_session/hello_session.h>
 #include <base/rpc_server.h>
 #include <root/component.h>
 
@@ -38,7 +38,7 @@ public:
     Root_component(Genode::Entrypoint &ep, Genode::Allocator &alloc):
         Genode::Root_component<Session_component>(ep, alloc)
     {
-        Genode:log("creating root component.");
+        Genode::log("creating root component.");
     }
 };
 
@@ -52,7 +52,7 @@ struct Hello::Main
 
     Main(Genode::Env &env) : env(env)
     {
-        env.parent().announce() { env.ep().manage(root)};
+        env.parent().announce(env.ep().manage(root));
     }
 };
 

@@ -1,3 +1,3 @@
-TARGET = hello_client
+TARGET = client
 SRC_CC = main.cc
 LIBS   = base

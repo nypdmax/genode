@@ -1,4 +1,7 @@
-#include <hello_session/session.h>
+#ifndef _INCLUDE__HELLO_SESSION_H__CLIENT_H_
+#define _INCLUDE__HELLO_SESSION_H__CLIENT_H_
+
+#include <hello_session/hello_session.h>
 #include <base/log.h>
 #include <base/rpc_client.h>
 
@@ -21,3 +24,5 @@ struct Hello::Session_client : Genode::Rpc_client<Session>
     return call<Rpc_add>(a, b);
   }
 };
+
+#endif
